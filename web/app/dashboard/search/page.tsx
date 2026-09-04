@@ -77,7 +77,7 @@ export default function SearchPage() {
             placeholder="예: 위스키"
           />
           <p className="mt-1 text-xs text-gray-400">
-            제목 · 해시태그 · 연관어 기준으로 매칭됩니다.
+            제목 · 본문 기준으로 매칭됩니다.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-4">
