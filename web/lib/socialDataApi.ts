@@ -5,8 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // upsert 해주는 방식으로 운영하기로 했습니다 (외부 API 호출 아님).
 // Claude/웹 UI 쪽 도구 인터페이스(countMatches, fetchMatches)는 그대로 두고,
 // 내부 구현만 Supabase documents 테이블을 직접 조회하도록 되어 있습니다.
-// 제목(title) · 본문(body) · 해시태그(hashtags) · 연관어(related_words)
-// 4개 필드를 기준으로 키워드를 매칭합니다.
+// 제목(title) · 본문(body) 2개 필드를 기준으로 키워드를 매칭합니다.
 // ============================================================
 
 export type SocialDoc = {
@@ -27,12 +26,7 @@ export type SocialDoc = {
 };
 
 function matchFilter(keyword: string) {
-  return [
-    `title.ilike.%${keyword}%`,
-    `body.ilike.%${keyword}%`,
-    `hashtags.ilike.%${keyword}%`,
-    `related_words.ilike.%${keyword}%`,
-  ].join(",");
+  return [`title.ilike.%${keyword}%`, `body.ilike.%${keyword}%`].join(",");
 }
 
 // 매칭 건수만 필요할 때 (포인트 차감 없음)
