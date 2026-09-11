@@ -20,14 +20,16 @@ export default function LandingPage() {
           Social Data × Claude
         </p>
         <h1 className="text-4xl font-bold leading-tight text-gray-900 sm:text-5xl">
-          키워드와 기간만 정하면,
+          소셜분석을 클로드로
           <br />
-          소셜데이터를 Claude가 바로 분석합니다
+          손쉽게 해보세요
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600">
-          newen.D에서 원하는 키워드와 기간의 데이터 볼륨을 먼저 확인하고, Claude에
-          연결해 필요한 만큼만 가져가 분석하세요. 가져간 데이터 1건당 1포인트가
-          차감됩니다.
+          newen.D에서 원하는 키워드와 기간의 데이터 볼륨을 먼저 확인하고,
+          <br />
+          Claude에 연결해 필요한 만큼만 가져가 분석하세요.
+          <br />
+          가져간 데이터 1건당 1포인트가 차감됩니다. (1포인트 = 15원)
         </p>
         <div className="mt-10 flex justify-center gap-3">
           <Link href="/signup" className="btn-primary px-6 py-3 text-base">
