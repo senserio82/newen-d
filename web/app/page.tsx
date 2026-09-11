@@ -20,9 +20,9 @@ export default function LandingPage() {
           Social Data × Claude
         </p>
         <h1 className="text-4xl font-bold leading-tight text-gray-900 sm:text-5xl">
-          소셜분석을 클로드로
+          소셜분석을
           <br />
-          손쉽게 해보세요
+          클로드로 손쉽게 해보세요
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600">
           newen.D에서 원하는 키워드와 기간의 데이터 볼륨을 먼저 확인하고,
