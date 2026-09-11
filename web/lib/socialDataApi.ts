@@ -23,7 +23,6 @@ export type SocialDoc = {
   eval_words?: string;
 };
 
-// 검색탭 미리보기용 — 원문(본문) 없이 메타 정보만 담습니다.
 export type SocialDocPreview = {
   title: string;
   url?: string;
@@ -37,7 +36,20 @@ function matchFilter(keyword: string) {
   return [`title.ilike.%${keyword}%`, `body.ilike.%${keyword}%`].join(",");
 }
 
-// 매칭 건수만 필요할 때 (포인트 차감 없음)
+// Supabase 에러 객체(PostgrestError)의 message 가 빈 문자열인 경우가 있어서
+// code/details/hint 까지 합쳐서 진짜 원인이 보이도록 만듭니다.
+function describeError(error: any, fallback: string): string {
+  if (!error) return fallback;
+  const parts = [error.message, error.details, error.hint, error.code]
+    .filter((v) => typeof v === "string" && v.trim().length > 0);
+  if (parts.length > 0) return parts.join(" | ");
+  try {
+    const json = JSON.stringify(error);
+    if (json && json !== "{}") return json;
+  } catch {}
+  return fallback;
+}
+
 export async function countMatches(
   keyword: string,
   startDate: string,
@@ -50,11 +62,10 @@ export async function countMatches(
     .or(matchFilter(keyword))
     .gte("collected_date", startDate)
     .lte("collected_date", endDate);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(describeError(error, "countMatches: 알 수 없는 DB 오류"));
   return count ?? 0;
 }
 
-// 검색탭에서 볼륨과 함께 보여줄 샘플 (본문 제외, 최대 5건)
 export async function fetchPreviewSamples(
   keyword: string,
   startDate: string,
@@ -70,11 +81,10 @@ export async function fetchPreviewSamples(
     .lte("collected_date", endDate)
     .order("collected_date", { ascending: false })
     .limit(limit);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(describeError(error, "fetchPreviewSamples: 알 수 없는 DB 오류"));
   return (data ?? []) as SocialDocPreview[];
 }
 
-// 실제 행 데이터를 최대 maxRows 건 가져올 때 (호출 전 포인트 검증은 호출부 책임)
 export async function fetchMatches(
   keyword: string,
   startDate: string,
@@ -90,6 +100,6 @@ export async function fetchMatches(
     .lte("collected_date", endDate)
     .order("collected_date", { ascending: false })
     .limit(maxRows);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(describeError(error, "fetchMatches: 알 수 없는 DB 오류"));
   return (data ?? []) as SocialDoc[];
 }
