@@ -24,9 +24,11 @@ export async function POST(req: Request) {
     ]);
     return NextResponse.json({ volume, samples });
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message ?? "볼륨 조회 중 알 수 없는 오류가 발생했습니다." },
-      { status: 502 }
-    );
+    const message =
+      (typeof err?.message === "string" && err.message.trim().length > 0
+        ? err.message
+        : null) ?? "볼륨 조회 중 알 수 없는 오류가 발생했습니다.";
+    console.error("[/api/search/volume] error:", err);
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 }
