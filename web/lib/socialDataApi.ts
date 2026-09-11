@@ -2,9 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 // ============================================================
 // 실제 소셜데이터는 newen.D 팀에서 documents 테이블에 주기적으로
-// upsert 해주는 방식으로 운영하기로 했습니다 (외부 API 호출 아님).
-// Claude/웹 UI 쪽 도구 인터페이스(countMatches, fetchMatches)는 그대로 두고,
-// 내부 구현만 Supabase documents 테이블을 직접 조회하도록 되어 있습니다.
+// upsert 해주는 방식으로 운영합니다 (외부 API 호출 아님).
 // 제목(title) · 본문(body) 2개 필드를 기준으로 키워드를 매칭합니다.
 // ============================================================
 
@@ -23,6 +21,16 @@ export type SocialDoc = {
   hashtags?: string;
   related_words?: string;
   eval_words?: string;
+};
+
+// 검색탭 미리보기용 — 원문(본문) 없이 메타 정보만 담습니다.
+export type SocialDocPreview = {
+  title: string;
+  url?: string;
+  channel_name?: string;
+  site_name?: string;
+  collected_date: string;
+  sentiment?: string;
 };
 
 function matchFilter(keyword: string) {
@@ -44,6 +52,26 @@ export async function countMatches(
     .lte("collected_date", endDate);
   if (error) throw new Error(error.message);
   return count ?? 0;
+}
+
+// 검색탭에서 볼륨과 함께 보여줄 샘플 (본문 제외, 최대 5건)
+export async function fetchPreviewSamples(
+  keyword: string,
+  startDate: string,
+  endDate: string,
+  limit = 5
+): Promise<SocialDocPreview[]> {
+  const db = createAdminClient();
+  const { data, error } = await db
+    .from("documents")
+    .select("title, url, channel_name, site_name, collected_date, sentiment")
+    .or(matchFilter(keyword))
+    .gte("collected_date", startDate)
+    .lte("collected_date", endDate)
+    .order("collected_date", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as SocialDocPreview[];
 }
 
 // 실제 행 데이터를 최대 maxRows 건 가져올 때 (호출 전 포인트 검증은 호출부 책임)
