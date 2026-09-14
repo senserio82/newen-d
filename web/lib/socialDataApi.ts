@@ -11,7 +11,6 @@ export type SocialDoc = {
   collect_doc_no?: string;
   doc_no?: string;
   title: string;
-  body?: string;
   url?: string;
   channel_name?: string;
   site_name?: string;
@@ -21,7 +20,12 @@ export type SocialDoc = {
   hashtags?: string;
   related_words?: string;
   eval_words?: string;
+  // body(본문)는 검색 매칭에만 쓰이고, 실제 인출 데이터에는 포함되지 않습니다.
 };
+
+// 실제로 가져갈 때(fetchMatches) 반환하는 컬럼 목록 — body 제외
+const FETCH_COLUMNS =
+  "id, collect_doc_no, doc_no, title, url, channel_name, site_name, source_name, collected_date, sentiment, hashtags, related_words, eval_words";
 
 export type SocialDocPreview = {
   title: string;
@@ -94,7 +98,7 @@ export async function fetchMatches(
   const db = createAdminClient();
   const { data, error } = await db
     .from("documents")
-    .select("*")
+    .select(FETCH_COLUMNS)
     .or(matchFilter(keyword))
     .gte("collected_date", startDate)
     .lte("collected_date", endDate)
