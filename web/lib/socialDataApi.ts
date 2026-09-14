@@ -111,6 +111,11 @@ export async function fetchPreviewSamples(
   return (data ?? []) as SocialDocPreview[];
 }
 
+// Supabase(PostgREST)는 한 번의 요청당 최대 1,000행까지만 돌려주고
+// 초과분은 에러 없이 조용히 잘라버립니다. 그래서 maxRows 가 1,000을
+// 넘으면 1,000건씩 나눠서(range 페이지네이션) 반복 조회합니다.
+const SUPABASE_PAGE_SIZE = 1000;
+
 export async function fetchMatches(
   keyword: string,
   startDate: string,
@@ -118,15 +123,33 @@ export async function fetchMatches(
   maxRows: number
 ): Promise<SocialDoc[]> {
   const db = createAdminClient();
-  const { data, error } = await db
-    .from("documents")
-    .select(FETCH_COLUMNS)
-    .or(matchFilter(keyword))
-    .gte("collected_date", startDate)
-    .lte("collected_date", endDate)
-    .order("collected_date", { ascending: false })
-    .limit(maxRows)
-    .abortSignal(timeoutSignal());
-  if (error) throw new Error(describeError(error, "fetchMatches: 알 수 없는 DB 오류"));
-  return (data ?? []) as SocialDoc[];
+  const results: SocialDoc[] = [];
+
+  let offset = 0;
+  while (results.length < maxRows) {
+    const remaining = maxRows - results.length;
+    const pageSize = Math.min(SUPABASE_PAGE_SIZE, remaining);
+    const rangeEnd = offset + pageSize - 1;
+
+    const { data, error } = await db
+      .from("documents")
+      .select(FETCH_COLUMNS)
+      .or(matchFilter(keyword))
+      .gte("collected_date", startDate)
+      .lte("collected_date", endDate)
+      .order("collected_date", { ascending: false })
+      .order("id", { ascending: false }) // 동일 날짜 항목의 순서를 안정적으로 고정 (페이지 간 중복/누락 방지)
+      .range(offset, rangeEnd)
+      .abortSignal(timeoutSignal());
+
+    if (error) throw new Error(describeError(error, "fetchMatches: 알 수 없는 DB 오류"));
+    if (!data || data.length === 0) break;
+
+    results.push(...(data as SocialDoc[]));
+    offset += data.length;
+
+    if (data.length < pageSize) break; // 더 이상 가져올 데이터가 없음
+  }
+
+  return results;
 }
