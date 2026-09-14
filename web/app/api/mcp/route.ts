@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { countMatches, fetchMatches } from "@/lib/socialDataApi";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 // ============================================================
 // newen.D MCP 서버 (Streamable HTTP, stateless 모드)
@@ -13,6 +14,11 @@ export const runtime = "nodejs";
 
 const TOOLS = [
   {
+    name: "check_point_balance",
+    description: "현재 계정의 보유 포인트 잔액을 조회합니다. 포인트 차감은 없습니다.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
     name: "list_saved_searches",
     description:
       "newen.D 검색탭에서 저장해둔 '키워드 + 기간' 조합 목록을 가져옵니다. 각 항목의 volume 은 저장 시점의 매칭 건수입니다.",
@@ -21,7 +27,7 @@ const TOOLS = [
   {
     name: "check_volume",
     description:
-      "특정 키워드가 포함된 문서 수를 지정한 기간(YYYY-MM-DD) 기준으로 조회합니다. 포인트가 차감되지 않는 미리보기용 조회입니다.",
+      "특정 키워드가 포함된 문서 수를 지정한 기간(YYYY-MM-DD) 기준으로 조회합니다. 포인트가 차감되지 않는 미리보기용 조회입니다. 3자 미만 키워드는 제목만, 3자 이상은 제목+본문을 기준으로 매칭합니다.",
     inputSchema: {
       type: "object",
       properties: {
@@ -36,7 +42,7 @@ const TOOLS = [
   {
     name: "fetch_data",
     description:
-      "키워드+기간에 매칭되는 실제 데이터 행을 가져옵니다. " +
+      "키워드+기간에 매칭되는 실제 데이터 행을 가져옵니다 (본문 원문은 포함되지 않고, 제목·URL·채널·수집일·감성 등 메타 정보만 반환됩니다). " +
       "confirm 을 생략하거나 false 로 호출하면 실제 데이터는 가져오지 않고 예상 건수와 필요 포인트만 미리 알려줍니다 — " +
       "이 경우 반드시 사용자에게 '몇 건, 몇 포인트가 필요한데 진행할까요?' 라고 먼저 물어본 뒤, " +
       "사용자가 동의한 경우에만 confirm: true 로 다시 호출하세요. confirm: true 로 호출해야만 실제로 포인트가 차감되고 데이터가 반환됩니다. " +
@@ -83,6 +89,16 @@ async function resolveUserId(apiKey: string | null) {
 async function callTool(name: string, args: any, userId: string) {
   const db = createAdminClient();
 
+  if (name === "check_point_balance") {
+    const { data, error } = await db
+      .from("profiles")
+      .select("points")
+      .eq("id", userId)
+      .single();
+    if (error) return errorResult(error.message);
+    return textResult({ points: data.points });
+  }
+
   if (name === "list_saved_searches") {
     const { data, error } = await db
       .from("saved_queries")
@@ -124,7 +140,6 @@ async function callTool(name: string, args: any, userId: string) {
       const wanted = Math.min(matched, max_rows ?? matched);
       const cap = Math.min(wanted, profile.points);
 
-      // confirm 이 없으면 미리보기만 반환하고 실제 인출/차감은 하지 않음
       if (!confirm) {
         return textResult({
           preview: true,
@@ -172,7 +187,6 @@ export async function POST(req: Request) {
 
   const body = await req.json();
 
-  // 알림(notification)은 id 가 없고 응답이 필요 없습니다.
   if (body.method === "notifications/initialized") {
     return new NextResponse(null, { status: 202 });
   }
@@ -190,7 +204,7 @@ export async function POST(req: Request) {
     return respond({
       protocolVersion: "2025-03-26",
       capabilities: { tools: {} },
-      serverInfo: { name: "newen.D", version: "0.1.0" },
+      serverInfo: { name: "newen.D", version: "0.2.0" },
     });
   }
 
@@ -214,7 +228,6 @@ export async function POST(req: Request) {
   return respondError(-32601, `Method not found: ${body.method}`);
 }
 
-// 일부 커넥터 클라이언트가 서버 확인용으로 GET 을 보내는 경우 대비
 export async function GET() {
   return NextResponse.json({ name: "newen.D MCP", status: "ok" });
 }
